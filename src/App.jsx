@@ -71,6 +71,23 @@ function useTilt() {
   }, [])
 }
 
+function usePrintedDigits(text, stepMs = 90, startDelayMs = 550) {
+  const [shown, setShown] = useState(0)
+  useEffect(() => {
+    let i = 0
+    let timer
+    const startTimer = setTimeout(() => {
+      timer = setInterval(() => {
+        i += 1
+        setShown(i)
+        if (i >= text.length) clearInterval(timer)
+      }, stepMs)
+    }, startDelayMs)
+    return () => { clearTimeout(startTimer); clearInterval(timer) }
+  }, [text, stepMs, startDelayMs])
+  return text.slice(0, shown)
+}
+
 function useCountdown(deadlineHHMM) {
   const [label, setLabel] = useState('')
   useEffect(() => {
@@ -90,6 +107,20 @@ function useCountdown(deadlineHHMM) {
     return () => clearInterval(id)
   }, [deadlineHHMM])
   return label
+}
+
+function useLiveClock() {
+  const [time, setTime] = useState('')
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date()
+      setTime(now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB')
+    }
+    tick()
+    const id = setInterval(tick, 30000)
+    return () => clearInterval(id)
+  }, [])
+  return time
 }
 
 function ClockIcon() {
@@ -180,7 +211,8 @@ function Arrow() {
 /* Digit-by-digit "cash-register printing" reveal for the hero's
    headline impact number. Runs once on mount. */
 function Hero() {
-  const heroWeight = '12,4 KG'
+  const printed = usePrintedDigits('12,4 KG', 80, 650)
+  const liveTime = useLiveClock()
 
   return (
     <>
@@ -189,27 +221,32 @@ function Hero() {
           <div className="hero-receipt-slot" aria-hidden="false">
             <div className="hero-receipt">
               <div className="receipt hero-receipt-core">
+                <div className="hero-receipt-sweep" aria-hidden="true"></div>
                 <div className="hero-receipt-head">
-                  <span className="mono">NOTA POTENSI HARIAN</span>
+                  <span className="mono live-tag">
+                    <span className="live-dot" aria-hidden="true" />
+                    {liveTime}
+                  </span>
                   <span className="mono">SOLO, JAWA TENGAH</span>
                 </div>
                 <div className="hero-receipt-big">
-                  <span className="mono">{heroWeight}</span>
+                  <span className="mono">{printed}</span>
+                  <span className="hero-receipt-cursor" aria-hidden="true" />
                 </div>
                 <div className="hero-receipt-caption mono">BISA DISELAMATKAN — KALAU ADA YANG MENJEMBATANI</div>
 
                 <div className="hero-receipt-items">
                   <div className="hero-receipt-item">
-                    <span>Roti Ibu Sri</span><span className="mono">1,8 kg</span>
+                    <span>Roti Ibu Sri</span><span className="mono">sisa perkiraan</span>
                   </div>
                   <div className="hero-receipt-item">
-                    <span>Warung Bu Marni</span><span className="mono">3,2 kg</span>
+                    <span>Warung Bu Marni</span><span className="mono">sisa perkiraan</span>
                   </div>
                   <div className="hero-receipt-item">
-                    <span>Kedai Kopi Solo</span><span className="mono">0,9 kg</span>
+                    <span>Kedai Kopi Solo</span><span className="mono">sisa perkiraan</span>
                   </div>
                   <div className="hero-receipt-item">
-                    <span>+ 12 merchant lainnya</span><span className="mono">6,5 kg</span>
+                    <span>+ 12 merchant lainnya</span><span className="mono">sisa perkiraan</span>
                   </div>
                 </div>
 
