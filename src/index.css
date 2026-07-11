@@ -114,13 +114,13 @@ nav.links a:hover{opacity:1;}
 }
 .hero-v2-inner{position:relative; z-index:2; width:100%; display:grid; grid-template-columns:0.86fr 1.14fr; gap:28px; align-items:center; min-width:0;}
 .hero-receipt-slot{position:relative; grid-column:1; grid-row:1; z-index:1; min-width:0;}
-.hero-receipt{width:min(390px, calc(100vw - 24px)); max-width:100%; transform:rotate(-4deg) translate(-2%, 2%); animation:receipt-drop .85s cubic-bezier(0.16,0.86,0.28,1.16) both; filter:drop-shadow(0 24px 36px rgba(0,0,0,0.28));}
+.hero-receipt{position:relative; overflow:hidden; width:min(390px, calc(100vw - 24px)); max-width:100%; transform:rotate(-4deg) translate(-2%, 2%); animation:receipt-drop .85s cubic-bezier(0.16,0.86,0.28,1.16) both; filter:drop-shadow(0 24px 36px rgba(0,0,0,0.28));}
 @keyframes receipt-drop{
   0%{opacity:0; transform:rotate(-4deg) translateY(-8%) scale(0.98);}
   70%{opacity:1;}
   100%{opacity:1; transform:rotate(-4deg) translateY(0) scale(1);}
 }
-.hero-receipt-core{background:var(--paper); color:var(--ink); padding:24px 22px 20px; position:relative; border:1px solid rgba(36,28,21,0.08); border-radius:1.15rem; box-shadow:0 18px 36px -24px rgba(36,28,21,0.35);}
+.hero-receipt-core{background:var(--paper); color:var(--ink); padding:24px 22px 20px; position:relative; border:1px solid rgba(36,28,21,0.08); border-radius:1.15rem; box-shadow:0 18px 36px -24px rgba(36,28,21,0.35); overflow:hidden; isolation:isolate;}
 
 /* --- live clock tag di header struk --- */
 .live-tag{display:flex; align-items:center; gap:6px;}
@@ -140,7 +140,7 @@ nav.links a:hover{opacity:1;}
 }
 .hero-receipt-sweep::after{
   content:''; position:absolute; top:-40%; left:-60%; width:60%; height:220%;
-  background:linear-gradient(115deg, transparent, rgba(255,255,255,0.35), transparent);
+  background:linear-gradient(115deg, transparent, rgba(255,255,255,0.28), transparent);
   transform:rotate(12deg) translateX(-100%);
   animation:sweep-once 1.4s ease-out 1s both;
 }
@@ -155,6 +155,48 @@ nav.links a:hover{opacity:1;}
     0 18px 36px -24px rgba(36,28,21,0.35),
     0 0 0 1px rgba(176,138,85,0.18),
     0 0 24px 2px rgba(176,138,85,0.10);
+}
+
+/* ============================================================
+   PARALLAX 3D — struk melayang dengan kedalaman nyata:
+   3 layer (bayangan, badan, kilau) bergerak beda kecepatan
+   mengikuti mouse (desktop) atau ambient sway (mobile).
+   ============================================================ */
+.hero-receipt-3d-stage{
+  position:relative;
+  perspective:1400px;
+}
+.hero-receipt-shadow-layer{
+  position:absolute; left:8%; right:8%; bottom:-6%; height:60%;
+  background:radial-gradient(ellipse at center, rgba(0,0,0,0.45), transparent 70%);
+  filter:blur(18px);
+  transform:translate(var(--shadow-x, 0px), var(--shadow-y, 0px));
+  transition:transform .15s linear;
+  z-index:0;
+}
+.hero-receipt-3d-stage .hero-receipt{
+  position:relative; z-index:1;
+  transform:
+    rotate(-9deg)
+    rotateX(var(--tilt-x, 0deg))
+    rotateY(var(--tilt-y, 0deg));
+  transform-style:preserve-3d;
+  transition:transform .12s linear;
+}
+@media (max-width: 1000px){
+  .hero-receipt-3d-stage .hero-receipt{
+    transform:
+      rotate(-5deg)
+      rotateX(var(--tilt-x, 0deg))
+      rotateY(var(--tilt-y, 0deg));
+  }
+}
+@media (prefers-reduced-motion: reduce){
+  .hero-receipt-3d-stage .hero-receipt,
+  .hero-receipt-shadow-layer,
+  .hero-receipt-sheen{
+    transform:none !important; transition:none;
+  }
 }
 
 /* --- baris urgensi di bawah lede --- */
@@ -182,14 +224,93 @@ nav.links a:hover{opacity:1;}
 .hero-receipt-item{display:flex; justify-content:space-between; gap:10px; font-size:0.82rem; color:var(--ink-soft); border-bottom:1px dashed var(--line-soft); padding-bottom:8px; flex-wrap:wrap;}
 .hero-receipt-total{display:flex; justify-content:space-between; align-items:baseline; margin-top:14px; padding-top:14px; border-top:2px solid var(--ink); font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:1rem;}
 .hero-receipt-total span:last-child{font-family:'Fraunces',serif; font-size:1.5rem; color:var(--rescue);}
-.hero-receipt-tear{height:14px; margin:20px -26px 0; background-image:radial-gradient(circle at 12px 0, transparent 6px, var(--paper) 6.5px); background-size:24px 14px; background-repeat:repeat-x;}
-.hero-tear-cta{
-  width:calc(100% + 52px); margin:0 -26px -26px; padding:18px 26px; background:var(--rescue); color:var(--paper); border:none; cursor:pointer;
-  font-weight:700; font-size:0.98rem; display:flex; align-items:center; justify-content:space-between; transition:background .3s, transform .3s var(--ease);
+/* --- zona sobek: robek otomatis begitu hero dimuat, tidak bergantung hover
+       (device tanpa hover — HP/tablet — harus tetap melihat momen ini) --- */
+.hero-tear-zone{
+  position:relative; margin:20px -26px -26px; overflow:hidden;
 }
-.hero-tear-cta:hover{background:var(--rescue-deep); transform:translateY(1px);}
+.hero-tear-halves{
+  position:relative; height:14px; z-index:2;
+}
+.tear-half{
+  position:absolute; left:0; right:0; height:14px;
+  background-image:radial-gradient(circle at 12px 0, transparent 6px, var(--paper) 6.5px);
+  background-size:24px 14px; background-repeat:repeat-x;
+}
+.tear-half-top{top:0;}
+.tear-half-bottom{top:0; transform:rotate(180deg);}
+
+.hero-tear-zone-auto .tear-half-top{
+  animation:tear-open-top 0.55s var(--ease) both;
+  animation-delay:1.15s;
+}
+.hero-tear-zone-auto .tear-half-bottom{
+  animation:tear-open-bottom 0.55s var(--ease) both;
+  animation-delay:1.15s;
+}
+@keyframes tear-open-top{
+  0%{transform:translateY(0);}
+  55%{transform:translateY(-6px) rotate(-1deg);}
+  100%{transform:translateY(-3px) rotate(-0.4deg);}
+}
+@keyframes tear-open-bottom{
+  0%{transform:translateY(0) rotate(180deg);}
+  55%{transform:translateY(6px) rotate(179deg);}
+  100%{transform:translateY(3px) rotate(179.6deg);}
+}
+
+.tear-reveal-strip{
+  position:absolute; top:2px; left:0; right:0; z-index:1;
+  background:var(--rescue-deep); color:var(--paper);
+  text-align:center; font-size:0.62rem; letter-spacing:0.14em;
+  padding:5px 0; opacity:0;
+}
+.hero-tear-zone-auto .tear-reveal-strip{
+  animation:tear-strip-flash 1.3s ease-out both;
+  animation-delay:1.15s;
+}
+@keyframes tear-strip-flash{
+  0%{opacity:0;}
+  20%{opacity:1;}
+  70%{opacity:1;}
+  100%{opacity:0;}
+}
+
+/* --- CTA: "terlepas" dari sobekan lalu menetap, plus denyut halus
+       terus-menerus supaya tetap terasa bisa diklik (bukan cuma hover) --- */
+.hero-tear-cta{
+  position:relative; z-index:2;
+  width:100%; padding:18px 26px; background:linear-gradient(155deg, var(--rescue), var(--rescue-deep));
+  color:var(--paper); border:none; cursor:pointer; font-weight:700; font-size:0.98rem;
+  display:flex; align-items:center; justify-content:space-between;
+  transition:background .3s, transform .25s var(--ease);
+  animation:cta-settle 0.5s var(--ease) both;
+  animation-delay:1.2s;
+}
+@keyframes cta-settle{
+  0%{transform:translateY(-6px) scale(0.97); opacity:0.6;}
+  60%{transform:translateY(2px) scale(1.01);}
+  100%{transform:translateY(0) scale(1); opacity:1;}
+}
+.hero-tear-cta:hover{background:linear-gradient(155deg, var(--rescue-deep), var(--rescue-deep)); transform:translateY(-2px);}
+.hero-tear-cta:active{transform:translateY(0) scale(0.98);}
 .hero-tear-cta svg{transition:transform .35s var(--ease);}
 .hero-tear-cta:hover svg{transform:translate(4px,-3px);}
+
+/* --- CTA sekunder: kontras diperbaiki, spesifisitas dinaikkan
+       supaya tidak lagi ketiban warna .btn-ghost --- */
+a.hero-secondary-btn{
+  display:inline-flex; align-items:center; gap:9px; margin-top:4px;
+  background:transparent; border:1.5px solid rgba(251,242,222,0.4);
+  color:var(--paper) !important;
+  padding:13px 22px; border-radius:999px; font-weight:700; font-size:0.94rem;
+  text-decoration:none; transition:border-color .3s, background .3s;
+}
+a.hero-secondary-btn:hover{border-color:var(--paper); background:rgba(251,242,222,0.08);}
+
+@media (prefers-reduced-motion: reduce){
+  .tear-half-top, .tear-half-bottom, .tear-reveal-strip, .hero-tear-cta{animation:none; opacity:1; transform:none;}
+}
 .hero-copy{position:relative; grid-column:2; grid-row:1; z-index:3; padding-left:8px; min-width:0; max-width:100%;}
 .eyebrow-dark{color:#D8C9A3; background:rgba(251,242,222,0.06); border-color:rgba(251,242,222,0.14);}
 .hero-v2-h1{font-size:clamp(2.6rem, 5.4vw, 4.6rem); line-height:0.98; color:var(--paper); max-width:11ch; margin-top:18px;}

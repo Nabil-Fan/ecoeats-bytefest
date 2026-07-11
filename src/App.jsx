@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
 function useReveal() {
   useEffect(() => {
@@ -208,19 +208,78 @@ function Arrow() {
   )
 }
 
+function useParallaxTilt(ref) {
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+
+    const isTouch = window.matchMedia('(hover: none)').matches
+    let raf
+    let pointerActive = false
+    let pointerX = 0.5
+    let pointerY = 0.5
+    const start = performance.now()
+
+    const applyTilt = (idleRx, idleRy) => {
+      const rx = idleRx + (pointerActive ? -pointerY * 10 : 0)
+      const ry = idleRy + (pointerActive ? (pointerX - 0.5) * 10 : 0)
+      el.style.setProperty('--tilt-x', `${rx}deg`)
+      el.style.setProperty('--tilt-y', `${ry}deg`)
+      el.style.setProperty('--shadow-x', `${ry * 1.8}px`)
+      el.style.setProperty('--shadow-y', `${-rx * 1.4}px`)
+      el.style.setProperty('--sheen-x', `${50 + ry * 3}%`)
+      el.style.setProperty('--sheen-y', `${50 + rx * 3}%`)
+    }
+
+    const loop = (now) => {
+      const t = (now - start) / 1000
+      const idleRx = Math.sin(t * 0.6) * (isTouch ? 5 : 2.2)
+      const idleRy = Math.cos(t * 0.5) * (isTouch ? 7 : 2.4)
+      applyTilt(idleRx, idleRy)
+      raf = requestAnimationFrame(loop)
+    }
+
+    const handleMove = (e) => {
+      const rect = el.getBoundingClientRect()
+      pointerX = (e.clientX - rect.left) / rect.width
+      pointerY = (e.clientY - rect.top) / rect.height
+      pointerActive = true
+    }
+    const handleLeave = () => {
+      pointerActive = false
+      el.style.setProperty('--shadow-x', '0px')
+      el.style.setProperty('--shadow-y', '0px')
+    }
+
+    raf = requestAnimationFrame(loop)
+    window.addEventListener('mousemove', handleMove)
+    el.addEventListener('mouseleave', handleLeave)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('mousemove', handleMove)
+      el.removeEventListener('mouseleave', handleLeave)
+    }
+  }, [ref])
+}
+
 /* Digit-by-digit "cash-register printing" reveal for the hero's
    headline impact number. Runs once on mount. */
 function Hero() {
   const printed = usePrintedDigits('12,4 KG', 80, 650)
   const liveTime = useLiveClock()
+  const stageRef = useRef(null)
+  useParallaxTilt(stageRef)
 
   return (
     <>
-      <section className="hero-v2">
+      <section className="hero-v2" ref={stageRef}>
         <div className="hero-v2-inner wrap">
           <div className="hero-receipt-slot" aria-hidden="false">
-            <div className="hero-receipt">
-              <div className="receipt hero-receipt-core">
+            <div className="hero-receipt-3d-stage">
+              <div className="hero-receipt-shadow-layer" aria-hidden="true"></div>
+              <div className="hero-receipt">
+                <div className="hero-receipt-sheen" aria-hidden="true"></div>
+                <div className="receipt hero-receipt-core">
                 <div className="hero-receipt-sweep" aria-hidden="true"></div>
                 <div className="hero-receipt-head">
                   <span className="mono live-tag">
@@ -255,11 +314,18 @@ function Hero() {
                   <span className="mono">12,4 KG</span>
                 </div>
 
-                <div className="hero-receipt-tear" aria-hidden="true"></div>
-                <button className="hero-tear-cta">
-                  <span>Sobek &amp; Mulai Selamatkan</span>
-                  <Arrow />
-                </button>
+            <div className="hero-tear-zone hero-tear-zone-auto">
+                  <div className="hero-tear-halves" aria-hidden="true">
+                    <span className="tear-half tear-half-top"></span>
+                    <span className="tear-half tear-half-bottom"></span>
+                  </div>
+                  <div className="tear-reveal-strip mono" aria-hidden="true">✂ TERSOBEK — SIAP DISELAMATKAN</div>
+                  <button className="hero-tear-cta">
+                    <span>Sobek Nota &amp; Lihat Potensi</span>
+                    <Arrow />
+                  </button>
+                </div>
+                 </div>
               </div>
             </div>
           </div>
@@ -272,7 +338,7 @@ function Hero() {
             <p className="lede lede-dark">
               Setiap malam, warung dan gerobak di Solo menutup lapak dengan stok yang sebenarnya masih layak dimakan. Bukan karena tak ada yang mau — tapi karena tak ada yang tahu, dan tak ada yang menjembatani.
             </p>
-            <a href="#temukan" className="hero-secondary-link">Atau daftar jadi merchant</a>
+            <a href="#" className="hero-secondary-btn">Daftar Jadi Merchant</a>
           </div>
         </div>
       </section>
