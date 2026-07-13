@@ -1,73 +1,76 @@
 import { useEffect, useState, useRef } from 'react'
+import placeholderImage from './assets/images/illustrations/placeholder-image.svg'
+import warungVisual from './assets/images/illustrations/warung.jpg'
+import storyVisual from './assets/images/illustrations/story-visual.jpg'
 
 function useReveal() {
   useEffect(() => {
-    const els = document.querySelectorAll('.reveal')
-    const io = new IntersectionObserver(
+    const nodes = document.querySelectorAll('.reveal')
+    const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting) {
-            e.target.classList.add('in')
-            io.unobserve(e.target)
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('in')
+            observer.unobserve(entry.target)
           }
         })
       },
       { threshold: 0.15 }
     )
-    els.forEach((el) => io.observe(el))
-    return () => io.disconnect()
+    nodes.forEach((node) => observer.observe(node))
+    return () => observer.disconnect()
   }, [])
 }
 
 function useCounters() {
   useEffect(() => {
-    const counters = document.querySelectorAll('[data-count]')
-    const animate = (el) => {
-      const target = parseInt(el.getAttribute('data-count'), 10)
+    const targets = document.querySelectorAll('[data-count]')
+    const playCount = (node) => {
+      const target = parseInt(node.getAttribute('data-count'), 10)
       const duration = 1400
       const start = performance.now()
       function tick(now) {
-        const p = Math.min((now - start) / duration, 1)
-        const eased = 1 - Math.pow(1 - p, 3)
-        el.textContent = Math.floor(eased * target).toLocaleString('id-ID')
-        if (p < 1) requestAnimationFrame(tick)
-        else el.textContent = target.toLocaleString('id-ID')
+        const progress = Math.min((now - start) / duration, 1)
+        const eased = 1 - Math.pow(1 - progress, 3)
+        node.textContent = Math.floor(eased * target).toLocaleString('id-ID')
+        if (progress < 1) requestAnimationFrame(tick)
+        else node.textContent = target.toLocaleString('id-ID')
       }
       requestAnimationFrame(tick)
     }
-    const cio = new IntersectionObserver(
+    const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting) {
-            animate(e.target)
-            cio.unobserve(e.target)
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            playCount(entry.target)
+            observer.unobserve(entry.target)
           }
         })
       },
       { threshold: 0.4 }
     )
-    counters.forEach((c) => cio.observe(c))
-    return () => cio.disconnect()
+    targets.forEach((target) => observer.observe(target))
+    return () => observer.disconnect()
   }, [])
 }
 
 function useTilt() {
   useEffect(() => {
-    const handleMove = (e) => {
-      const card = e.target.closest && e.target.closest('.tilt')
-      document.querySelectorAll('.tilt').forEach((el) => {
-        if (el !== card) el.style.transform = ''
+    const moveCard = (event) => {
+      const targetCard = event.target.closest && event.target.closest('.tilt')
+      document.querySelectorAll('.tilt').forEach((node) => {
+        if (node !== targetCard) node.style.transform = ''
       })
-      if (!card) return
-      const rect = card.getBoundingClientRect()
-      const px = (e.clientX - rect.left) / rect.width
-      const py = (e.clientY - rect.top) / rect.height
+      if (!targetCard) return
+      const rect = targetCard.getBoundingClientRect()
+      const px = (event.clientX - rect.left) / rect.width
+      const py = (event.clientY - rect.top) / rect.height
       const rotateX = (0.5 - py) * 14
       const rotateY = (px - 0.5) * 14
-      card.style.transform = `perspective(900px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-6px)`
+      targetCard.style.transform = `perspective(900px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-6px)`
     }
-    document.addEventListener('mousemove', handleMove)
-    return () => document.removeEventListener('mousemove', handleMove)
+    document.addEventListener('mousemove', moveCard)
+    return () => document.removeEventListener('mousemove', moveCard)
   }, [])
 }
 
@@ -131,7 +134,23 @@ function ClockIcon() {
   )
 }
 
-/* Deterministic "barcode" strip — turns any string into a row of bars. */
+function ImageWithFallback({ src, alt, className = '', ...props }) {
+  const [failed, setFailed] = useState(false)
+  const resolvedSrc = failed ? placeholderImage : src || placeholderImage
+
+  return (
+    <img
+      src={resolvedSrc}
+      alt={alt}
+      className={className}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      {...props}
+    />
+  )
+}
+
+/* Make a simple barcode-like strip from any text. */
 function Barcode({ seed = 'ECOEATS', height = 30, caption }) {
   const bars = []
   let hash = 0
@@ -262,13 +281,22 @@ function useParallaxTilt(ref) {
   }, [ref])
 }
 
-/* Digit-by-digit "cash-register printing" reveal for the hero's
-   headline impact number. Runs once on mount. */
+/* Reveal the hero number one digit at a time when the page loads. */
 function Hero() {
   const printed = usePrintedDigits('12,4 KG', 80, 650)
   const liveTime = useLiveClock()
   const stageRef = useRef(null)
+  const [isCtaBusy, setIsCtaBusy] = useState(false)
   useParallaxTilt(stageRef)
+
+  const handleCtaClick = () => {
+    setIsCtaBusy(true)
+    const target = document.getElementById('temukan')
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+    window.setTimeout(() => setIsCtaBusy(false), 900)
+  }
 
   return (
     <>
@@ -314,14 +342,14 @@ function Hero() {
                   <span className="mono">12,4 KG</span>
                 </div>
 
-            <div className="hero-tear-zone hero-tear-zone-auto">
+                <div className="hero-tear-zone hero-tear-zone-auto">
                   <div className="hero-tear-halves" aria-hidden="true">
                     <span className="tear-half tear-half-top"></span>
                     <span className="tear-half tear-half-bottom"></span>
                   </div>
                   <div className="tear-reveal-strip mono" aria-hidden="true">✂ TERSOBEK — SIAP DISELAMATKAN</div>
-                  <button className="hero-tear-cta">
-                    <span>Sobek Nota &amp; Lihat Potensi</span>
+                  <button className="hero-tear-cta" type="button">
+                    <span>Lihat Potensi</span>
                     <Arrow />
                   </button>
                 </div>
@@ -453,38 +481,58 @@ function DampakSDG() {
 
 function Masalah() {
   return (
-    <section className="masalah" id="masalah">
-      <div className="wrap">
-        <div className="section-head reveal">
-          <span className="kicker">Kenapa ini penting</span>
-          <div className="mono" style={{ marginTop: 10, marginBottom: 8, fontSize: '0.82rem', letterSpacing: '0.2em' }}>Ilustrasi kasus</div>
-          <h2>Malam ini, ada warung yang menutup lapak sambil menghitung kerugian yang sebenarnya bisa dihindari.</h2>
-          <p>
-            Bu Marni tutup warung jam 8 malam. Sisa nasi sayur yang tidak laku, biasanya dia bawa pulang untuk dimakan sendiri esok — kalau masih layak. Kalau tidak, ya dibuang. Bukan karena dia tidak peduli, tapi karena tidak ada cara lain menjualnya sebelum basi.
-          </p>
-          <p>
-            Cerita seperti ini terjadi di ratusan warung dan gerobak di Solo, setiap malam. Di saat yang sama, 783 juta orang mengalami kelaparan pada saat lebih dari 1 miliar makanan dibuang setiap hari.
-          </p>
+<section className="masalah">
+  <div className="wrap">
+
+    <div className="masalah-layout">
+
+      {/* TEXT */}
+      <div className="masalah-content reveal">
+
+        <span className="kicker">
+          KENAPA INI PENTING
+        </span>
+
+        <div className="mono masalah-label">
+          Ilustrasi kasus
         </div>
-        <div className="stat-receipt reveal">
-          <div className="stat-line">
-            <span className="tag mono">01</span>
-            <span className="cap">Dunia membuang sekitar 1,05 miliar ton makanan pada tahun 2022, setara hampir 19% makanan yang tersedia bagi konsumen.</span>
-            <span className="big">1,05 miliar ton</span>
-          </div>
-          <div className="stat-line">
-            <span className="tag mono">02</span>
-            <span className="cap">Jumlah orang yang mengalami kelaparan di dunia pada saat food waste terjadi dalam skala besar.</span>
-            <span className="big">783 juta</span>
-          </div>
-          <div className="stat-line">
-            <span className="tag mono">03</span>
-            <span className="cap">EcoEats dirancang untuk mendukung upaya pengurangan food waste melalui redistribusi makanan surplus di tingkat merchant lokal.</span>
-            <span className="big">Prototype Ready</span>
-          </div>
-        </div>
+
+        <h2>
+          Malam ini, ada warung yang menutup lapak sambil
+          menghitung kerugian yang sebenarnya bisa dihindari.
+        </h2>
+
+        <p>
+          Bu Marni tutup warung jam 8 malam. Beberapa porsi
+          makanan masih tersisa, tetapi pelanggan sudah tidak
+          datang lagi. Jika tidak segera terjual, makanan itu
+          kemungkinan besar akan terbuang.
+        </p>
+
+        <p>
+          Cerita seperti ini terjadi di ratusan warung setiap
+          hari. Bukan karena makanannya tidak layak, melainkan
+          karena tidak ada sistem yang mempertemukan surplus
+          makanan dengan orang yang masih membutuhkannya.
+        </p>
+
       </div>
-    </section>
+
+      {/* IMAGE */}
+      <div className="masalah-visual reveal">
+
+        <ImageWithFallback
+          src={warungVisual}
+          alt="Warung lokal di malam hari"
+          className="masalah-image"
+        />
+
+      </div>
+
+    </div>
+
+  </div>
+</section>
   )
 }
 
@@ -813,30 +861,36 @@ function GenggamanmuPreview() {
           <div className="pocket-arrow-flow mono" aria-hidden="true">menjadi</div>
 
           <div className="pocket-phone reveal reveal-right">
-            <div className="phone-frame">
-              <div className="phone-notch" />
-              <div className="phone-screen">
-                <div className="phone-topbar">
-                  <span className="mono">9:41</span>
-                  <span className="mono">EcoEats</span>
-                </div>
-                <div className="phone-app-nav">
-                  <span className="brand" style={{ fontSize: '0.98rem' }}><span className="mark" />EcoEats</span>
-                </div>
-                <div className="phone-card">
-                  <span className="badge mono" style={{ position: 'static' }}>-50%</span>
-                  <span className="merchant mono">Roti Ibu Sri</span>
-                  <h3>Roti Tawar Gandum</h3>
-                  <div className="food-card-badges">
-                    <span className="mbadge">★ 4.9</span>
-                    <span className="mbadge">📍 600 m</span>
-                    <span className="mbadge mbadge-stock">Tersisa 3</span>
-                  </div>
-                  <div className="price"><span className="now">Rp7.500</span><span className="was">Rp15.000</span></div>
-                  <button className="hero-tear-cta phone-cta"><span>Selamatkan</span><Arrow /></button>
-                </div>
-              </div>
-            </div>
+<div className="phone-frame">
+  <div className="phone-notch" />
+  <div className="phone-screen">
+    <div className="phone-topbar">
+      <span className="mono">9:41</span>
+      <div className="phone-status-icons">
+        <span>📶</span><span>📡</span><span>🔋</span>
+      </div>
+    </div>
+    <div className="phone-app-nav">
+      <span className="brand" style={{ fontSize: '0.98rem' }}><span className="mark" />EcoEats</span>
+      <div className="phone-search">🔍 Cari</div>
+    </div>
+    <div className="phone-card">
+      <div className="phone-card-media">
+        <span className="badge mono">-50%</span>
+        <span className="mbadge mbadge-stock">Tersisa 3</span>
+      </div>
+      <span className="merchant mono">Roti Ibu Sri</span>
+      <h3>Roti Tawar Gandum</h3>
+      <div className="food-card-badges">
+        <span className="mbadge">★ 4.9</span>
+        <span className="mbadge"> 600 m</span>
+      </div>
+      <div className="price"><span className="now">Rp7.500</span><span className="was">Rp15.000</span></div>
+      <button className="hero-tear-cta phone-cta"><span>Selamatkan</span><Arrow /></button>
+    </div>
+    <div className="phone-home-indicator" aria-hidden="true" />
+  </div>
+</div>
           </div>
         </div>
       </div>
@@ -942,10 +996,12 @@ function Cerita() {
     <section className="cerita">
       <div className="wrap">
         <div className="cerita-grid">
-          <div className="cerita-visual reveal" aria-hidden="true">
-            <svg width="86" height="86" viewBox="0 0 24 24" fill="none" stroke="#FBF2DE" strokeWidth="1.1">
-              <path d="M4 11h16M4 11a8 8 0 0116 0M4 11v2a8 8 0 0016 0v-2M9 4v3M15 4v3" />
-            </svg>
+          <div className="cerita-visual reveal">
+            <ImageWithFallback
+              src={storyVisual}
+              alt="Ilustrasi visual warung dan makanan yang bisa diselamatkan"
+              className="story-image"
+            />
           </div>
           <div className="reveal">
             <p className="quote">
